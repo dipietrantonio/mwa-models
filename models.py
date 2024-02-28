@@ -1,3 +1,5 @@
+SPEED_OF_LIGHT = 299792458 # m/s
+
 class Interferometer:
     def __init__(self, n_antennas, n_pols, n_channels, sampling_freq, bit_per_sample, FoV, longest_baseline, time_res):
         self.n_antennas = n_antennas
@@ -43,4 +45,4 @@ class Imager:
         return self.image_side ** 2 * self.bits_per_pixel \
             * self.correlator.n_channels * self.correlator.n_intervals
 
-MWA_PHASE_1 = Interferometer(128, 2, 3092, 1e4, 8, None, 2864, 1e-4)
+MWA_PHASE_1 = Interferometer(128, 2, 3092, 1e4, 8, 610, 2864, 1e-4)
