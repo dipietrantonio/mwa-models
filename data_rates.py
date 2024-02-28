@@ -15,7 +15,7 @@ imaging = IMAGER.data_rate  / 1024**3 / 8
 
 def data_rates_plot():
     plt.rcParams.update({'font.size': 23})
-    so.barplot(data=dict(zip(["VCS", "Correlation", "Imaging"], [vcs_rate, corr, imaging])))
+    so.barplot(data=dict(zip(["VCS", "Correlation", "Imaging"], [vcs_rate, corr, imaging])), width=0.5)
     plt.ylabel("Output data rate (GiB/s)")
     plt.title("Significant data rates of the FRB search pipeline.")
     plt.show()

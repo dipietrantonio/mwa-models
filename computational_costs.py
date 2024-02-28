@@ -65,7 +65,7 @@ def plot_imaging_costs_frb_case():
     plt.bar(["Correlation", "Gridding", "FFT"], costs_perc)
     plt.xlabel("Phases")
     plt.ylabel("Fraction of total cost (%)")
-    plt.title("Computational cost (per time sample) distribution over imaging steps (int. time = 50ms)")
+    plt.title("Computational cost (per time sample) distribution over imaging steps (MWA Phase 1, freq 150MHz, int. time = 50ms)")
     plt.show()
 
 
@@ -98,7 +98,7 @@ def plot_imaging_costs_as_function_of_int_time():
     
     plt.xlabel("Integration time (s)")
     plt.ylabel("Fraction of total cost (%)")
-    plt.title("Computational cost per time sample of every imaging step as a function of integration time.")
+    plt.title("Computational cost per time sample of every imaging step as a function of integration time (MWA Phase I, freq = 150MHz).")
     plt.legend(["Correlation", "Gridding", "FFT"])
     plt.show()
 
@@ -109,43 +109,35 @@ def plot_beamforming_vs_imaging_frb_case():
     bf_cost = beamforming_cost_per_time_sample(Np)
     img_cost = imaging_cost_per_time_sample(Np, INTEGRATION_TIME)
     print(f"Beamforming cost = {bf_cost}\nImaging cost = {img_cost}")
-    plt.bar(["Beamforming", "Imaging"], [bf_cost, img_cost])
+    plt.bar(["Beamforming", "Imaging"], [bf_cost, img_cost], width=0.2)
     plt.xlabel("Strategy")
     plt.yscale("log")
     plt.ylabel("Number of computational steps")
     plt.title("Computational cost of beamforming and imaging for MWA Phase I (freq = 150MHz, int_time = 50ms)")
     plt.show()
 
-    
 
-def beamforming_vs_imaging():
+def plot_beamforming_vs_imaging_as_number_of_pixes():
     INTEGRATION_TIME = 0.05
-    MAX_BASELINES = [3000, 6000, 10000]
-    for max_baseline_length in MAX_BASELINES:
-        Np = npixels(max_baseline_length)
-
-        bc = []
-        ic = []
-
-        
-        diff = [ y / x * 100 for x, y in zip(bc, ic)]
-        print(bc[0], ic[0])
-        plt.plot(TIME, diff)
-        
-        # plt.plot(TIME, bc)
-        # plt.plot(TIME, ic)
-        # plt.legend(["Beamforming", "Imaging"])
-        # plt.show()
-        plt.ylabel("Percentage %")
-        plt.xlabel("Observation time")
-        plt.legend(["Cost of imaging w.r.t. beamforming"])
+    relative_cost = []
+    X = list(range(1, int(1e2)))
+    for Np in X:
+        bf_cost = beamforming_cost_per_time_sample(Np)
+        img_cost = imaging_cost_per_time_sample(Np, INTEGRATION_TIME)
+        relative_cost.append(img_cost / bf_cost * 100)
     
-    plt.legend(["Bmax = {}k".format(bmax) for bmax in BLINES])
+    plt.plot(X, relative_cost)
+    plt.plot(X, len(X) * [100])
+    plt.xlabel("Number of pixels")
+    plt.ylabel("Percentage (%)")
+    plt.title("Computational cost of imaging w.r.t. beamforming as a function of pixels (MWA Phase I, int_time = 50ms)")
+    plt.legend(["Relative cost", "100% mark"])
     plt.show()
 
 
 
 if __name__ == "__main__":
     # plot_imaging_costs_frb_case()
-    plot_imaging_costs_as_function_of_int_time()
+    #plot_imaging_costs_as_function_of_int_time()
     plot_beamforming_vs_imaging_frb_case()
+    # plot_beamforming_vs_imaging_as_number_of_pixes()
