@@ -141,6 +141,7 @@ if __name__ == "__main__":
     plot_imaging_costs_frb_case(ax1)
     plot_beamforming_vs_imaging_frb_case(ax2)
     plt.show()
+
     plot_imaging_costs_as_function_of_int_time()
-    
     # plot_beamforming_vs_imaging_as_number_of_pixes()
+    plt.show()

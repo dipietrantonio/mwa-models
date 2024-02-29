@@ -1,6 +1,6 @@
-import seaborn as so
 import matplotlib.pyplot as plt
 from models import MWA_PHASE_1, Correlator, Imager
+from plotting import make_barplot
 
 CORRELATOR = Correlator(MWA_PHASE_1, 0.05, 4)
 IMAGER = Imager(CORRELATOR)
@@ -15,9 +15,10 @@ imaging = IMAGER.data_rate  / 1024**3 / 8
 
 def data_rates_plot():
     plt.rcParams.update({'font.size': 23})
-    so.barplot(data=dict(zip(["VCS", "Correlation", "Imaging"], [vcs_rate, corr, imaging])), width=0.5)
-    plt.ylabel("Output data rate (GiB/s)")
-    plt.title("Significant data rates of the FRB search pipeline.")
+    title = "Significant data rates of the FRB search pipeline."
+
+    make_barplot(["VCS", "Correlation", "Imaging"], [vcs_rate, corr, imaging], 
+        ylabel="Output data rate (GiB/s)", title=title)
     plt.show()
 
 

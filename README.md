@@ -8,4 +8,4 @@ A set of scripts to evaluate properties of MWA observations and processes.
 Plotting libraries
 
 - `matplotlib`
-- `seaborn`
+- `numpy`
