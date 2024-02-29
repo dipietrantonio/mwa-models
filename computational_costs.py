@@ -1,8 +1,7 @@
-import seaborn as so
 import matplotlib.pyplot as plt
 from math import log, pi
 from models import MWA_PHASE_1 as MWA_MODEL, SPEED_OF_LIGHT
-
+from plotting import make_barplot
 
 ############################################################################
 #                      COMPUTATIONAL COST STUDY
@@ -13,7 +12,7 @@ FOV = 610  # Deg^2
 FREQ = 150 * 1e6
 
 def freq_to_wavelength(freq):
-    return SPEED_OF_LIGHT / FREQ
+    return SPEED_OF_LIGHT / freq
 
 
 def npixels(Bmax):
@@ -50,23 +49,20 @@ def imaging_cost_per_time_sample(Np, integration_time):
             fft_cost_per_time_sample(Np, integration_time)
 
 
-def plot_imaging_costs_frb_case():
+
+def plot_imaging_costs_frb_case(ax):
     integration_time = 0.05
     Np = npixels(MWA_MODEL.longest_baseline)
     ccost = correlation_cost_per_time_sample()
     gcost = gridding_cost_per_time_sample(integration_time)
     fcost = fft_cost_per_time_sample(Np, integration_time)
-    costs = [ccost, gcost, fcost]
+    # costs = [ccost, gcost, fcost]
+    costs = [ccost, fcost]
     m = sum(costs)
     costs_perc = [x / m * 100 for x in costs]
-    # print(costs)
-    # print(costs_perc)
-    # plt.barplot(total_costs)
-    plt.bar(["Correlation", "Gridding", "FFT"], costs_perc)
-    plt.xlabel("Phases")
-    plt.ylabel("Fraction of total cost (%)")
-    plt.title("Computational cost (per time sample) distribution over imaging steps (MWA Phase 1, freq 150MHz, int. time = 50ms)")
-    plt.show()
+    xlabels = ["Correlation", "FFT"]
+    title = "Computational cost (per time sample) distribution over imaging steps (MWA Phase 1, freq 150MHz, int. time = 50ms)"
+    make_barplot(xlabels, costs_perc, None, "Fraction of total cost (%)", ax = ax)
 
 
 
@@ -100,21 +96,25 @@ def plot_imaging_costs_as_function_of_int_time():
     plt.ylabel("Fraction of total cost (%)")
     plt.title("Computational cost per time sample of every imaging step as a function of integration time (MWA Phase I, freq = 150MHz).")
     plt.legend(["Correlation", "Gridding", "FFT"])
-    plt.show()
+    
 
 
-def plot_beamforming_vs_imaging_frb_case():
+def plot_beamforming_vs_imaging_frb_case(ax):
     INTEGRATION_TIME = 0.05
     Np = npixels(MWA_MODEL.longest_baseline)
     bf_cost = beamforming_cost_per_time_sample(Np)
     img_cost = imaging_cost_per_time_sample(Np, INTEGRATION_TIME)
     print(f"Beamforming cost = {bf_cost}\nImaging cost = {img_cost}")
-    plt.bar(["Beamforming", "Imaging"], [bf_cost, img_cost], width=0.2)
-    plt.xlabel("Strategy")
-    plt.yscale("log")
-    plt.ylabel("Number of computational steps")
-    plt.title("Computational cost of beamforming and imaging for MWA Phase I (freq = 150MHz, int_time = 50ms)")
-    plt.show()
+
+    title = "Computational cost of beamforming and imaging for MWA Phase I (freq = 150MHz, int_time = 50ms)"
+
+    xlabels = ["Beamforming", "Imaging"]
+    values = [bf_cost, img_cost]
+    print(values)
+    make_barplot(
+        xlabels, values,
+        ylabel="Number of computational steps", ax=ax, logscale=True)
+
 
 
 def plot_beamforming_vs_imaging_as_number_of_pixes():
@@ -128,16 +128,19 @@ def plot_beamforming_vs_imaging_as_number_of_pixes():
     
     plt.plot(X, relative_cost)
     plt.plot(X, len(X) * [100])
-    plt.xlabel("Number of pixels")
-    plt.ylabel("Percentage (%)")
-    plt.title("Computational cost of imaging w.r.t. beamforming as a function of pixels (MWA Phase I, int_time = 50ms)")
+    plt.set(xlabel="Number of pixels", ylabel ="Percentage (%)")
+    plt.set_title("Computational cost of imaging w.r.t. beamforming as a function of pixels (MWA Phase I, int_time = 50ms)")
     plt.legend(["Relative cost", "100% mark"])
-    plt.show()
-
+    
 
 
 if __name__ == "__main__":
-    # plot_imaging_costs_frb_case()
-    #plot_imaging_costs_as_function_of_int_time()
-    plot_beamforming_vs_imaging_frb_case()
+    plt.rcParams.update({'font.size': 13})
+    fig, (ax1, ax2) = plt.subplots(1, 2)
+    fig.tight_layout()
+    plot_imaging_costs_frb_case(ax1)
+    plot_beamforming_vs_imaging_frb_case(ax2)
+    plt.show()
+    plot_imaging_costs_as_function_of_int_time()
+    
     # plot_beamforming_vs_imaging_as_number_of_pixes()
