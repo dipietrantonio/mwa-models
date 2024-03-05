@@ -13,17 +13,17 @@ def delay(DM, f1, f2):
     return K * DM * (f1**(-2) - f2**(-2))
 
 # noise = np.random.normal(0, 0.5, (N_CHANNELS, N_TIMESTEPS))
-
 # times = [INTEGRATION_TIME * i for i in range(N_TIMESTEPS)]
 # freqs = np.linspace(CENTRE_FREQ - 1.28 / 2, CENTRE_FREQ + 1.28 / 2, N_CHANNELS)
-# F = [(0.07 + i * 0.03) for i in range(5)] # GHz 
-# v = [delay(500, F[i - 1], F[i]) / 1000 for i in range(1, len(F))]
+F = [(0.07 + i * 0.01) for i in range(30)] # GHz 
+v = [delay(600, F[i - 1], F[i]) / 1000 for i in range(1, len(F))]
+print("Delay over MWA frequency band: ", delay(600, 0.07, 0.3) / 1000)
 
 
-# plt.plot(v, F[1:])
-# plt.xlabel("Delay (s)")
-# plt.ylabel("Frequency (GHz)")
-# plt.show()
+plt.plot(v, F[1:])
+plt.xlabel("Delay (s)")
+plt.ylabel("Frequency (GHz)")
+plt.show()
 # T = 0.30
 # for i in range(N_CHANNELS - 1):
 #     print(freqs[i])
