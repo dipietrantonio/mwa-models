@@ -1,37 +1,27 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from models import dispersive_delay
 
 
-INTEGRATION_TIME = 0.05
-N_TIMESTEPS = 100
-CENTRE_FREQ = 158
-FREQ_RES = 0.01
-N_CHANNELS = int(1.28 / FREQ_RES)
-K = 4.15 #8808e3
 
-def delay(DM, f1, f2):
-    return K * DM * (f1**(-2) - f2**(-2))
+def generate_sweep(DM, f_low_mhz, f_high_mhz, freq_res_mhz, int_time_s, signal):
+    n_channels = int((f_high_mhz - f_low_mhz) / freq_res_mhz)
+    freqs_ghz = np.linspace(f_low_mhz / 1000, f_high_mhz / 1000, n_channels)
+    delays_s = [dispersive_delay(DM, freqs_ghz[i], freqs_ghz[i + 1]) / 1000
+                for i in range(len(freqs_ghz) - 1)]
+    total_delay_s = sum(delays_s)
+    centre_freq_mhz = (f_high_mhz + f_low_mhz ) / 2
+    background = np.random.normal(0, 0.5, (n_channels, int(total_delay_s / int_time_s) + 1))
+    current_time_s = 0
+    for i in range(n_channels - 1):
+        D = delays_s[-i]
+        current_time_s += D
+        background[i, int(current_time_s/int_time_s)] = signal()
+    return background
 
-# noise = np.random.normal(0, 0.5, (N_CHANNELS, N_TIMESTEPS))
-# times = [INTEGRATION_TIME * i for i in range(N_TIMESTEPS)]
-# freqs = np.linspace(CENTRE_FREQ - 1.28 / 2, CENTRE_FREQ + 1.28 / 2, N_CHANNELS)
-F = [(0.07 + i * 0.01) for i in range(30)] # GHz 
-v = [delay(600, F[i - 1], F[i]) / 1000 for i in range(1, len(F))]
-print("Delay over MWA frequency band: ", delay(600, 0.07, 0.3) / 1000)
+
+background = generate_sweep(600, 135, 165, 0.01, 0.05, lambda : 4)
 
 
-plt.plot(v, F[1:])
-plt.xlabel("Delay (s)")
-plt.ylabel("Frequency (GHz)")
+plt.imshow(background)
 plt.show()
-# T = 0.30
-# for i in range(N_CHANNELS - 1):
-#     print(freqs[i])
-#     D = delay(500, freqs[i + 1], freqs[i])
-#     print(D)
-#     T_adj = T + D
-#     #print(T_adj)
-#     noise[i, int(T_adj/INTEGRATION_TIME)] = 3
-#     #break
-# plt.imshow(noise)
-# plt.show()
