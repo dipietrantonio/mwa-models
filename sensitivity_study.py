@@ -16,26 +16,28 @@ def sensitivity(t_int, delta_v):
 
 
 def frb_min_fluence(N, int_time, delta_v):
-    return N * sensitivity(int_time, delta_v) * int_time 
+    return N * sensitivity(int_time, delta_v) * int_time * 1000
 
 
 def sensitivity_study():
     N = 10
-    T =  [i for i in range(1, 100)]
-    V = [sensitivity(t_int, 1.28e6) for t_int in T]
-    F = [frb_min_fluence(N, t_int, 1.28e6) for t_int in T]
+    T =  [i * 0.001 for i in range(1, 50)]
+    V = [sensitivity(t_int, 30.72e6) for t_int in T]
+    F = [frb_min_fluence(N, t_int, 30.72e6) for t_int in T]
 
     fig, (ax1, ax2) = plt.subplots(1, 2)
 
     ax1.plot(T, V)
     ax1.set_title("Noise / Sensitivity")
-    ax1.set_xlabel("Integration time (ms)")
+    ax1.set_xlabel("Integration time (s)")
     ax1.set_ylabel("Flux (Jy)")
     ax2.plot(T, F)
-    ax2.set_xlabel("Integration time (ms)")
+    ax2.set_xlabel("Integration time (s)")
     ax2.set_ylabel("Fluence (Jy ms)")
     ax2.set_title("Minimum detectable fluence")
     
+    for t, f in zip(T, F):
+        print(t, f)
     plt.show()
 
 
