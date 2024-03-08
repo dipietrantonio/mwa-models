@@ -26,6 +26,9 @@ def parse_asvo_results_xml(filename):
 
 if __name__ == "__main__":
     smart_obs = parse_asvo_results_xml("data/asvo-results-smart.xml")
-    
+    print(len(smart_obs))
     print("Total duration (hours) of SMART VCS observations:", 
           sum(x['duration'] for x in smart_obs) / 3600 )
+
+    print("Total space (PiB) occupied by SMART VCS:",
+          sum(x['total_archived_bytes'] for x in smart_obs) / 1024**5)
