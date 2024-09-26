@@ -1,11 +1,16 @@
 SPEED_OF_LIGHT = 299792458 # m/s
+K = 4.15
+
+def dispersive_delay(DM, f1_ghz, f2_ghz):
+    return K * DM * (f1_ghz**(-2) - f2_ghz**(-2))
+
 
 class Interferometer:
-    def __init__(self, n_antennas, n_pols, n_channels, sampling_freq, bit_per_sample, FoV, longest_baseline, time_res):
+    def __init__(self, n_antennas, n_pols, n_channels, bit_per_sample, FoV, longest_baseline, time_res):
         self.n_antennas = n_antennas
         self.n_pols = n_pols
         self.n_channels = n_channels
-        self.sampling_freq = sampling_freq
+        self.sampling_freq = 1 / time_res
         self.bit_per_sample = bit_per_sample
         self.FoV = FoV
         self.longest_baseline = longest_baseline
@@ -45,4 +50,6 @@ class Imager:
         return self.image_side ** 2 * self.bits_per_pixel \
             * self.correlator.n_channels * self.correlator.n_intervals
 
-MWA_PHASE_1 = Interferometer(128, 2, 3092, 1e4, 8, 610, 2864, 1e-4)
+MWA_PHASE_1 = Interferometer(128, 2, 3072, 8, 610, 2864, 1e-4)
+
+EDA2 = Interferometer(256, 2, None, None, 12000, 35, 1e-6)
