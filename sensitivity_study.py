@@ -36,8 +36,6 @@ def sensitivity_study():
     ax2.set_ylabel("Fluence (Jy ms)")
     ax2.set_title("Minimum detectable fluence")
     
-    for t, f in zip(T, F):
-        print(t, f)
     plt.show()
 
 

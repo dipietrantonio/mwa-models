@@ -8,7 +8,7 @@ from plotting import make_barplot
 ############################################################################
 
 TIME_RES = MWA_MODEL.time_res # 1e-4 s
-FOV = 610  # Deg^2
+FOV = MWA_MODEL.FoV # 610  # Deg^2
 FREQ = 150 * 1e6
 
 def freq_to_wavelength(freq):
@@ -60,15 +60,15 @@ def plot_imaging_costs_frb_case(ax):
     costs = [ccost, fcost]
     m = sum(costs)
     costs_perc = [x / m * 100 for x in costs]
-    xlabels = ["Correlation", "FFT"]
+    xlabels = ["Correlation", "2D FFT"]
     title = "Computational cost (per time sample) distribution over imaging steps (MWA Phase 1, freq 150MHz, int. time = 50ms)"
-    make_barplot(xlabels, costs_perc, None, "Fraction of total cost (%)", ax = ax)
+    make_barplot(xlabels, costs, None, "Number of computational steps", ax = ax)
 
 
 
 def plot_imaging_costs_as_function_of_int_time():
     STEP_TIME = 0.005 # s
-    MAX_TIME = 1 # s
+    MAX_TIME = 0.5 # s
     INT_TIMES = [i * 0.005 for i in range(1, int(MAX_TIME/STEP_TIME))]
 
     ccosts = []
@@ -82,7 +82,7 @@ def plot_imaging_costs_as_function_of_int_time():
         fcost = fft_cost_per_time_sample(Np, integration_time)
         costs = [ccost, gcost, fcost]
         m = sum(costs)
-        costs_perc = [x / m * 100 for x in costs]
+        costs_perc = costs #[x / m * 100 for x in costs]
 
         ccosts.append(costs_perc[0])
         gcosts.append(costs_perc[1])
@@ -93,9 +93,11 @@ def plot_imaging_costs_as_function_of_int_time():
     plt.plot(INT_TIMES, fcosts)
     
     plt.xlabel("Integration time (s)")
-    plt.ylabel("Fraction of total cost (%)")
-    plt.title("Computational cost per time sample of every imaging step as a function of integration time (MWA Phase I, freq = 150MHz).")
-    plt.legend(["Correlation", "Gridding", "FFT"])
+    plt.ylabel("Computational steps")
+    
+    #plt.ylabel("Fraction of total cost (%)")
+    plt.title("Computational cost per time sample of every imaging step")
+    plt.legend(["Correlation", "Gridding", "2D FFT"])
     
 
 
@@ -135,13 +137,17 @@ def plot_beamforming_vs_imaging_as_number_of_pixes():
 
 
 if __name__ == "__main__":
-    plt.rcParams.update({'font.size': 13})
-    fig, (ax1, ax2) = plt.subplots(1, 2)
-    fig.tight_layout()
-    plot_imaging_costs_frb_case(ax1)
-    plot_beamforming_vs_imaging_frb_case(ax2)
-    plt.show()
+    plt.rcParams.update({'font.size': 20})
+    plt.title("Computational cost of beamforming and imaging for MWA Phase I (freq = 150MHz, int_time = 50ms)")
+    
+    # fig, (ax1, ax2) = plt.subplots(1, 2)
+    # fig.tight_layout()
+    # plot_imaging_costs_frb_case(ax1)
+    # plot_beamforming_vs_imaging_frb_case(ax2)
+    # plt.show()
 
+  
     plot_imaging_costs_as_function_of_int_time()
-    # plot_beamforming_vs_imaging_as_number_of_pixes()
+    plt.show()
+    plot_beamforming_vs_imaging_as_number_of_pixes()
     plt.show()
