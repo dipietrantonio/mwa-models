@@ -1,7 +1,8 @@
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
-from models import MWA_PHASE_1, Correlator, Imager, Dedispersion, dispersive_delay
+from models import MWA_PHASE_1, Correlator, Imager, Dedispersion
 from plotting import make_barplot
+from basics import dispersive_delay_ms
 
 
 
@@ -9,7 +10,7 @@ def display_data_requirements(integration_time_s, channel_avg_factor, image_side
     # dispersive delay for 30MHz of bandwidth centered at 150MHz with a DM of 600
     lb_ghz = (bwcentre_mhz - 30.72/2) / 1000
     hb_ghz = (bwcentre_mhz + 30.72/2) / 1000
-    delay_s = dispersive_delay(repr_dm, lb_ghz, hb_ghz) / 1000
+    delay_s = dispersive_delay_ms(repr_dm, lb_ghz, hb_ghz) / 1000
     CORRELATOR = Correlator(MWA_PHASE_1, integration_time_s, channel_avg_factor)
     IMAGER = Imager(image_side, bits_per_pixel, CORRELATOR)
     DEDISP = Dedispersion(n_dm_trials, IMAGER)

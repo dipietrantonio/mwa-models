@@ -1,13 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from models import dispersive_delay
-
+from basics import dispersive_delay_ms
 
 
 def generate_sweep(DM, f_low_mhz, f_high_mhz, freq_res_mhz, int_time_s, start_time, signal):
     n_channels = int((f_high_mhz - f_low_mhz) / freq_res_mhz)
     freqs_ghz = np.linspace(f_low_mhz / 1000, f_high_mhz / 1000, n_channels)
-    delays_s = [dispersive_delay(DM, freqs_ghz[i], freqs_ghz[i + 1]) / 1000
+    delays_s = [dispersive_delay_ms(DM, freqs_ghz[i], freqs_ghz[i + 1]) / 1000
                 for i in range(len(freqs_ghz) - 1)]
     total_delay_s = sum(delays_s)
     n_timesteps = int(total_delay_s / int_time_s) * 10
@@ -25,7 +24,7 @@ def generate_sweep(DM, f_low_mhz, f_high_mhz, freq_res_mhz, int_time_s, start_ti
 
 
 def dedisperse_with_dm(background, freqs_ghz, time_res_s, DM):
-    delays_s = [dispersive_delay(DM, freqs_ghz[i], freqs_ghz[i + 1]) / 1000
+    delays_s = [dispersive_delay_ms(DM, freqs_ghz[i], freqs_ghz[i + 1]) / 1000
             for i in range(len(freqs_ghz) - 1)]
     time_series = []
     C, T = background.shape
@@ -57,7 +56,7 @@ def peak_detection(time_series, SN = 2):
     return means, peaks
 
 
-print(dispersive_delay(600, 0.138, 0.169)/1000)
+print(dispersive_delay_ms(600, 0.138, 0.169)/1000)
 exit(0)
 
 

@@ -11,14 +11,6 @@ TIME_RES = MWA_MODEL.time_res # 1e-4 s
 FOV = MWA_MODEL.FoV # 610  # Deg^2
 FREQ = 150 * 1e6
 
-def freq_to_wavelength(freq):
-    return SPEED_OF_LIGHT / freq
-
-
-def npixels(Bmax):
-    lmbda = freq_to_wavelength(FREQ)
-    resolution = (lmbda/Bmax) * 180 / pi
-    return (FOV / resolution**2)
 
 
 def beamforming_cost_per_time_sample(Np):

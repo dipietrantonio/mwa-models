@@ -1,9 +1,3 @@
-SPEED_OF_LIGHT = 299792458 # m/s
-K = 4.15
-
-def dispersive_delay(DM, f1_ghz, f2_ghz):
-    return K * DM * (f1_ghz**(-2) - f2_ghz**(-2))
-
 
 class Interferometer:
     def __init__(self, n_antennas, n_pols, n_channels, bit_per_sample, FoV, longest_baseline, time_res):
