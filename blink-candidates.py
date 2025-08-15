@@ -14,6 +14,8 @@ import pandas
 import seaborn
 
 
+pandas.set_option('display.max_rows', None)
+
 
 def read_candidates_series(filename):
 	with open(filename, "rb") as fp:
@@ -29,6 +31,8 @@ def read_candidates_series(filename):
 				data = fp.read(28)
 				candidate = [candidate_id, batch_id] + list(struct.unpack("iififff", data)) # ID, x, y, dm, time_step, value, avg, std
 				candidate[5] += global_offset
+				# compute SNR
+				candidate.append((candidate[6] - candidate[7])/candidate[8])
 				candidates.append(candidate)
 				candidate_id += 1
 			series = np.zeros((n_series, buffer_size))
@@ -42,12 +46,8 @@ def read_candidates_series(filename):
 			batch_id += 1
 
 
-def plot_candidates(candidates, header_info):
-	df = pandas.DataFrame(sorted(candidates, key = lambda x: x[6]),  columns=['ID', 'Batch ID', 'x', 'y', 'dm', 'Time step', 'Peak Flux (Jy)', 'Mean Flux (Jy)', 'std'])
-	df.sort_values(by='Peak Flux (Jy)')
-	pandas.set_option('display.max_rows', None)
-	print(df)
-	seaborn.scatterplot(df, x='x', y='y', hue='dm', size='Peak Flux (Jy)', sizes=(5, 200), palette='muted')
+def plot_candidates(candidates_df, header_info):
+	seaborn.scatterplot(candidates_df, x='x', y='y', hue='dm', size='Peak Flux (Jy)', sizes=(5, 200), palette='muted')
 	ax = plt.gca()
 	ax.set_xlim([0, header_info[1]])
 	ax.set_ylim([0, header_info[1]])
@@ -63,7 +63,7 @@ def create_movie(filename, snr, cand_ids = None):
 		for x in res: candidates.extend([y for y in x[1] if ((y[6] - y[7])/y[8]) >= snr])
 	else:
 		for x in res: candidates.extend(x[1])
-	df = pandas.DataFrame(sorted(candidates, key = lambda x: x[6]),  columns=['ID', 'Batch ID', 'x', 'y', 'dm', 'Time step', 'Peak Flux (Jy)', 'Mean Flux (Jy)', 'std'])
+	df = pandas.DataFrame(sorted(candidates, key = lambda x: x[6]),  columns=['ID', 'Batch ID', 'x', 'y', 'dm', 'Time step', 'Peak Flux (Jy)', 'Mean Flux (Jy)', 'std', 'SNR'])
 	sort = df.sort_values(by='Time step')
 	figure = plt.figure()
 	ax = plt.gca()
@@ -84,17 +84,20 @@ def create_movie(filename, snr, cand_ids = None):
 	plt.show()
 	
 
-def process_candidates(filename, snr, plot_candidates = True, cand_ids = None):
+def process_candidates(filename, snr, plot_candids = True, cand_ids = None):
 	res = list(read_candidates_series(filename))
 	# filter by SNR
 	candidate_set = []
 	if snr > -1:
-		for x in res: candidate_set.extend([y for y in x[1] if ((y[6] - y[7])/y[8]) >= snr])
+		for x in res: candidate_set.extend([y for y in x[1] if y[9] >= snr])
 	else:
 		for x in res: candidate_set.extend(x[1])
+	candidates_df = pandas.DataFrame(sorted(candidate_set, key = lambda x: x[6]),  columns=['ID', 'Batch ID', 'x', 'y', 'dm', 'Time step', 
+	'Peak Flux (Jy)', 'Mean Flux (Jy)', 'std', 'SNR'])
+	print(candidates_df)
 	header_info = res[0][0]
-	if plot_candidates:
-		plot_candidates(candidate_set, header_info)
+	if plot_candids:
+		plot_candidates(candidates_df, header_info)
 	time_res = 0.02
 	if cand_ids is not None:
 		legend = []
@@ -168,7 +171,7 @@ if __name__ == "__main__":
 
 	if args['candidates']:
 		candidates_ids = None if args['ids'] is None else [int(x) for x in args['ids'].split(',')]
-		process_candidates(args['files'][0], args['snr'], candidates_ids)
+		process_candidates(args['files'][0], args['snr'], args['plot'], candidates_ids)
 	elif args['movie']:
 		create_movie(args['files'][0], args['snr'])
 	else:
