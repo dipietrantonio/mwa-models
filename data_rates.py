@@ -11,6 +11,8 @@ def display_data_requirements(integration_time_s, channel_avg_factor, image_side
     lb_ghz = (bwcentre_mhz - 30.72/2) / 1000
     hb_ghz = (bwcentre_mhz + 30.72/2) / 1000
     delay_s = dispersive_delay_ms(repr_dm, lb_ghz, hb_ghz) / 1000
+    delay_final = (int(delay_s / integration_time_s) + 1) * integration_time_s
+    buffer_size_s = 2
     CORRELATOR = Correlator(MWA_PHASE_1, integration_time_s, channel_avg_factor)
     IMAGER = Imager(image_side, bits_per_pixel, CORRELATOR)
     DEDISP = Dedispersion(n_dm_trials, IMAGER)
@@ -36,7 +38,7 @@ def display_data_requirements(integration_time_s, channel_avg_factor, image_side
 
     print(f"Dispersive delay for DM = {repr_dm} pc cm-3 for 30.72 MHz of bandwidth centered at {bwcentre_mhz} MHz is {delay_s:.2f} seconds.")
     print(f"Dynamic spectra (images) total volume: {imaging_gibps * delay_s:.2f} GiB")
-    print(f"DM-Arrival time (time series) total volume: {dedispersion_gibps * delay_s:.2f} GiB")
+    print(f"DM-Arrival time (time series) total volume: {dedispersion_gibps * (delay_final + buffer_size_s) :.2f} GiB")
     
     print()
 
