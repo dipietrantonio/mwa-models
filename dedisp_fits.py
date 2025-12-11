@@ -67,7 +67,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dm", type=float, default=0, help="Dispersion measure used to dedisperse the dynamic spectrum.")
     parser.add_argument("--chan-avg", type=int, default=4, help="Channel averaging factor.")
-    parser.add_argument("--freq", type=float, default=153.5, help="Central frequency (in MHz) of the central frequency channel.")
+    parser.add_argument("--freq", type=float, default=154.237, help="Central frequency (in MHz) of the central frequency channel.")
     parser.add_argument("--nchans", type=int, default=768, help="Number of frequency channels.")
     parser.add_argument("--chan-width", type=float, default=0.04, help="Frequency channel width in MHz")
     parser.add_argument("--time-res", type=float, default=0.02, help="Time resolution in seconds.")
