@@ -10,6 +10,7 @@ for ref in references:
     F = [100 + i for i in range(100)]
     R = [expected_frb_daily_rate(ref['ref_rate'], ref['ref_freq'], ref['ref_fluence'], 150e6, f, 0) for f in F]
     SMART_R = [r/2 * (1.5/24) for r in R]
+    print(sum(SMART_R))
     plt.plot(F, SMART_R)
 
 
