@@ -141,8 +141,6 @@ def _parse_plaintext_table(extracted_text: str) -> pd.DataFrame:
         #     rows.append(parts)
         # Name PSRJ DM
         rows.append([parts[0], parts[2], parts[4]])
-    if not rows:
-        raise ValueError("Found a header but could not parse any data rows.")
 
     return pd.DataFrame(rows, columns=colnames)
 
@@ -183,4 +181,9 @@ if __name__ == "__main__":
     }
 
     df = query_atnf_psrcat(params)
-    print(df)
+
+    print("==============================")
+    print("Number of results:", len(df))
+    print("==============================")
+    if len(df) > 0:
+        print(df)
