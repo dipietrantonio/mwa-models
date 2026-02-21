@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import io
 import re
 from typing import Any, Dict, Iterable, Optional, Tuple, Union
 import requests
@@ -101,6 +100,8 @@ def _parse_plaintext_table(extracted_text: str) -> pd.DataFrame:
         raise ValueError("Could not find a header line (starting with '#') in the response.")
 
     # Column names: split header after '#'
+    # TODO this does not work if a name is split on two rows
+    # for now, just manually specify the columns
     header_line = lines[header_i].lstrip()[1:].strip()
     colnames = [c for c in _MULTI_WS_RE.split(header_line) if c]
 
@@ -139,10 +140,10 @@ def _parse_plaintext_table(extracted_text: str) -> pd.DataFrame:
         # if len(parts) >= len(colnames):
         #     parts = parts[: len(colnames)]
         #     rows.append(parts)
-        # Name PSRJ DM
-        rows.append([parts[0], parts[2], parts[4]])
+        # Rad Dist Name PSRJ DM
+        rows.append([-1 if parts[0] == "*" else float(parts[0]), parts[1], parts[3], -1 if parts[5] == "*" else float(parts[5])])
 
-    return pd.DataFrame(rows, columns=colnames)
+    return pd.DataFrame(rows, columns=["Rad. distance", "Name", "PSRJ Name", "DM"], )
 
 
 # ------------------- Example usage -------------------
@@ -151,6 +152,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--radius", type=float, default=1.0, help="Radius (in degrees) or the search area defined by the coordinates.")
+    parser.add_argument("--dm", type=float, default=-1, help="Filter results by the specified DM +/- 2.")
     parser.add_argument("COORDINATES", nargs="+", help="Whitespace-delimited oordinates, in degrees, defining the centre of the search area.")
 
     args = vars(parser.parse_args())
@@ -160,6 +162,7 @@ if __name__ == "__main__":
         "Name": "Name",
         "JName": "JName",
         "DM": "DM",
+        "raddist" : "raddist",
         "startUserDefined": "true",
         "sort_attr": "jname",
         "sort_order": "asc",
@@ -181,7 +184,11 @@ if __name__ == "__main__":
     }
 
     df = query_atnf_psrcat(params)
-
+    if len(df) > 0:
+        dm = args["dm"]
+        if dm >= 0:
+            df = df.loc[(df['DM'] >= dm - 1) & (df['DM'] <= dm + 1)]
+    
     print("==============================")
     print("Number of results:", len(df))
     print("==============================")
