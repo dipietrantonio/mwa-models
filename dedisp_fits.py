@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
-from math import ceil, floor
+from math import ceil
 from astropy.io import fits
 import argparse
 import numpy as np
 from matplotlib import pyplot as plt
-from matplotlib.transforms import Affine2D
+from scipy.stats import norm, skew, kurtosis, kstest
 import os
 import shutil
 
@@ -101,6 +101,41 @@ def study_time_series_noise(time_series : np.ndarray, time_res):
     plt.show()
 
 
+
+def fit_gaussian_to_timeseries(fig, time_series: np.ndarray, title):
+    mu, sigma = norm.fit(time_series)
+    N = len(time_series)
+    sk = skew(time_series)
+    kurt = kurtosis(time_series)
+    ks_stat, ks_p = kstest(time_series, 'norm', args=(mu, sigma))
+    gs = fig.add_gridspec(1, 2, width_ratios = [3, 1])
+    ax_hist = fig.add_subplot(gs[0])
+    ax_text = fig.add_subplot(gs[1])
+
+    count, bins, _ = ax_hist.hist(time_series, bins=60, density=True, alpha=0.6)
+    x = np.linspace(bins[0], bins[-1], 1000)
+    ax_hist.plot(x, norm.pdf(x, mu, sigma), 'r', lw=2)
+
+    ax_hist.set_title(title)
+    ax_hist.set_xlabel("Flux")
+    ax_hist.set_ylabel("Probability Density")
+
+    stats_text = (
+        f"N = {N}\n\n"
+        f"Mean (μ) = {mu:.4g}\n"
+        f"Std (σ) = {sigma:.4g}\n\n"
+        f"Skew = {sk:.4g}\n"
+        f"Excess Kurtosis = {kurt:.4g}\n\n"
+        f"KS stat = {ks_stat:.4g}\n"
+        f"KS p-value = {ks_p:.4g}"
+    )
+
+    ax_text.text(0.05, 0.95, stats_text, va='top', fontsize=11)
+    ax_text.axis('off')
+    fig.tight_layout()
+
+
+
 def compute_iqr(values):
     sorted_values = sorted(values)
     q75 = int(len(sorted_values) * 0.75)
@@ -180,17 +215,8 @@ def transform_spectrum(dyspec, frequencies, time_res, DM, channel_avg, time_avg,
         dyspec = average_timesteps(dyspec, time_avg)
 
     time_series = compute_time_series(dyspec)
-    print("mean", np.mean(time_series[179:189]))
-    print("sum", np.sum(time_series[179:189]))
-    
     median_series = np.median(dyspec, axis=0)
     peak_idxs = peak_finding(time_series)
-    
-
-    if True:
-        time_series  -= np.nanmedian(time_series)
-        median_series  -= np.nanmedian(median_series)
-    
     return dyspec, dm_time, dm_list, time_series, median_series, peak_idxs
 
 
@@ -218,7 +244,7 @@ def plot_ts_and_dynspec(fig, ds, dm_time, dm_list, ts, median, peak_idxs, t, fre
    
     # --- Time series ---
     ax_ts.plot(t, ts, lw=0.8)
-    ax_ts.set_ylabel("Avg. intensity")
+    ax_ts.set_ylabel("Mean intensity")
     ax_ts.tick_params(labelbottom=False)
     ax_ts.grid(alpha=0.3)
 
@@ -273,18 +299,59 @@ def plot_ts_and_dynspec(fig, ds, dm_time, dm_list, ts, median, peak_idxs, t, fre
 
 
 
-def plot_spectrum(fig, dyspec, time_offset, frequencies, time_res, dm, channel_avg, time_avg, plot_title, interp, disable_norm, gain):
 
-    dyspec, dm_time, dm_list, time_series, median_series, peak_idxs = transform_spectrum(dyspec, frequencies, time_res, dm, channel_avg, time_avg, disable_norm, gain)
+def plot_spectrum(main_fig, mean_fig, median_fig, dyspec, time_offset, frequencies, time_res, dm, channel_avg,
+                  time_avg, plot_title, interp, disable_norm, gain, fit_mean, fit_median):
+
+    dyspec, dm_time, dm_list, time_series, median_series, peak_idxs = transform_spectrum(dyspec, frequencies, time_res, dm, channel_avg, time_avg, disable_norm, gain,)
     
-    plot_ts_and_dynspec(fig, dyspec, dm_time, dm_list, time_series, median_series, peak_idxs,
-                    [time_offset + x * time_res * time_avg for x in range(len(time_series))],
-                    [x*1e3 for x in frequencies[:-1]], title=plot_title, interp=interp)
+    time_range = [time_offset + x * time_res * time_avg for x in range(len(time_series))]
+    freq_range = [x*1e3 for x in frequencies[:-1]]
+    plot_ts_and_dynspec(main_fig, dyspec, dm_time, dm_list, time_series, median_series, peak_idxs,
+                    time_range, freq_range, title=plot_title, interp=interp)
+
+    def parse_time_range(range_spec):
+        if range_spec == "": return 0, len(time_range)
+        comp = range_spec.split(',')
+        if len(comp) == 1:
+            low = time_range.index(float(comp[0]))
+            high = len(time_range)
+        else:
+            low = time_range.index(float(comp[0]))
+            high = time_range.index(float(comp[1]))
+        return low, high
+
+    if fit_mean is not None and mean_fig is not None:
+        try:
+            low, high = parse_time_range(fit_mean)
+        except:
+            print("WARNING: could not parse time range.")
+            low = 0
+            high = len(time_series)
+        fit_gaussian_to_timeseries(mean_fig, time_series[low:high], "Mean Flux Density")
     
+    if fit_median is not None and median_fig is not None:
+        try:
+            low, high = parse_time_range(fit_median)
+        except:
+            print("WARNING: could not parse time range.")
+            low = 0
+            high = len(median_series)
+            
+        fit_gaussian_to_timeseries(median_fig, median_series[low:high], "Median Flux Density")
 
 
-def process_followup_fits_list(filenames, frequencies, time_res, channel_avg, time_avg, args_dm, interp, disable_norm, gain, save_plots, identities):
-    fig = plt.figure(figsize=(10, 6))
+def process_followup_fits_list(filenames, frequencies, time_res, channel_avg, time_avg, args_dm, interp, disable_norm, gain,
+                               save_plots, identities, fit_mean, fit_median):
+    
+    main_fig = plt.figure(figsize=(10, 6))
+    mean_fig = None
+    median_fig = None
+    if fit_mean is not None:
+        print("OK")
+        mean_fig = plt.figure(figsize=(10, 4))
+    if fit_median is not None:
+        median_fig = plt.figure(figsize=(10, 4))
     current_file_idx = 0
 
     def process_fits(idx, filename):
@@ -302,17 +369,18 @@ def process_followup_fits_list(filenames, frequencies, time_res, channel_avg, ti
         dyspec = read_fits(filename)
         if args_dm > 0:
             dm = args_dm
-        plot_spectrum(fig, dyspec, int(offset), frequencies, time_res, dm, channel_avg, time_avg, plot_title, interp, disable_norm, gain)
+        plot_spectrum(main_fig, mean_fig, median_fig, dyspec, int(offset), frequencies, time_res, dm, channel_avg,
+                      time_avg, plot_title, interp, disable_norm, gain, fit_mean, fit_median)
     
     if save_plots:
         for idx, file in enumerate(filenames):
-            fig.clear()
+            main_fig.clear()
             process_fits(idx, file)
-            plt.savefig(f"{file}_postprocessed.png", dpi=800)
+            main_fig.savefig(f"{file}_postprocessed.png", dpi=800)
         return
     
 
-    def on_keypress(event, fig):
+    def on_keypress(event, main_fig):
         nonlocal current_file_idx
         if event.key in ["up", "pageup", "left"]:
             # go one slide backwards
@@ -326,12 +394,17 @@ def process_followup_fits_list(filenames, frequencies, time_res, channel_avg, ti
             # command not recognised: no nothing
             return
         
-        fig.clear()
+        main_fig.clear()
+        if mean_fig is not None: mean_fig.clear()
+        if median_fig is not None: median_fig.clear()
+
         process_fits(current_file_idx, filenames[current_file_idx])
-        plt.draw()
+        main_fig.canvas.draw()
+        if mean_fig is not None: mean_fig.canvas.draw()
+        if median_fig is not None: median_fig.canvas.draw()
 
     
-    fig.canvas.mpl_connect('key_press_event', lambda event: on_keypress(event, fig))
+    main_fig.canvas.mpl_connect('key_press_event', lambda event: on_keypress(event, main_fig))
 
     # Display the initial candidate
     process_fits(0, filenames[0])
@@ -386,7 +459,10 @@ if __name__ == "__main__":
     parser.add_argument("--max-cands", type=int, default=-1, help="Maximum number of candidates a dynamic spectrum can contain not to be discarded in filtering. This helps with RFI.")
     parser.add_argument("--gain", type=float, default=1, help="Apply calibration gain to the dynamic spectrum, before averaging.")
     parser.add_argument("--disable-norm", action='store_true', help="Disable median subtraction used to normalise power across channels.")
-    parser.add_argument("--disable-time-norm", action='store_true', help="Disable time series normalisation.")
+    parser.add_argument("--fit-median", nargs='?', type=str, const="", default=None, help="Fit a Gaussian model to the median time series.\n"
+                        "Optionally, a time range 'start,end' in seconds can used to select a section of the time series. E.g. --fit-median 674-684.")
+    parser.add_argument("--fit-mean", nargs='?', type=str, const="", default=None, help="Fit a Gaussian model to the mean time series.\n"
+                        "Optionally, a time range 'start,end' in seconds can used to select a section of the time series. E.g. --fit-mean 674-684.")
     parser.add_argument("FITS FILE", nargs='+', type=str, help="FITS file containing the dynamic spectrum.")
 
     args = vars(parser.parse_args())
@@ -421,12 +497,21 @@ if __name__ == "__main__":
                 identities = identify_candidates(args["FITS FILE"])
             process_followup_fits_list(args['FITS FILE'], frequencies, args["time_res"], args["chan_avg"],
                                        args["time_avg"], args["dm"], args["interp"], args["disable_norm"],
-                                       args["gain"], args["save"], identities)
+                                       args["gain"], args["save"], identities, args["fit_mean"], args["fit_median"])
         except ValueError:
             # Not the standard followp filename.. use standard processing
-            fig = plt.figure(figsize=(10, 6))
+            main_fig = plt.figure(figsize=(10, 6))
+            mean_fig = None
+            median_fig = None
+            if args["fit_mean"] is not None:
+                mean_fig = plt.figure(figsize=(10, 4))
+            if args["fit_median"] is not None:
+                median_fig = plt.figure(figsize=(10, 4))
+        
             dyspec = read_fits(args['FITS FILE'][0])
-            plot_spectrum(fig, dyspec, 0, frequencies, args["time_res"], args["dm"],  args["chan_avg"], args["time_avg"], args["FITS FILE"][0], args["interp"], args["disable_norm"], args["gain"])
+            plot_spectrum(main_fig, mean_fig, median_fig, dyspec, 0, frequencies, args["time_res"], args["dm"],  args["chan_avg"],
+                          args["time_avg"], args["FITS FILE"][0], args["interp"], args["disable_norm"],
+                          args["gain"], args["fit_mean"], args["fit_median"])
             plt.show()
 
 
