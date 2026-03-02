@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 def dump_image(input, output):
     my_fits = fits.open(input)
-    fits_img = my_fits[0].data
+    fits_img = my_fits[-1].data
     plt.imsave(output, fits_img, cmap='gray')
 
 

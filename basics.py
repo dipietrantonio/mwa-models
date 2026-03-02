@@ -14,7 +14,7 @@ def freq_to_wavelength_m(freq_hz):
 #
 # SENSITIVITY STUDY
 #
-
+# TODO: look at the primary beam model to fix this
 def SEFD_jy(freq_hz):
     """
     System Equivalent Flux Density
@@ -37,17 +37,21 @@ def SEFD_jy(freq_hz):
     return val_in_jy
 
 def sensitivity_jy(frequency_hz, integration_time_s, n_antennas, bandwidth_hz):
-    # SEFD = 28001.7919 #16242.1012 (216MHz)
+    SEFD = 32472.4514 # SEFD_jy(frequency_hz)
     # smart is 36000
     # print(f"{SEFD_jy(frequency_hz)=}")
     eff = 1
     B = (n_antennas / 2) * (n_antennas - 1) # Should we include the number of polarizations
     n_pol = 2
-    return SEFD_jy(frequency_hz) /(eff * sqrt(bandwidth_hz * n_pol * B * integration_time_s))
+    return SEFD /(eff * sqrt(bandwidth_hz * n_pol * B * integration_time_s))
 
 
 def frb_min_fluence_jyms(SNR, frequency_hz, integration_time_s, n_antennas, bandwidth_hz):
-    return SNR * sensitivity_jy(frequency_hz, integration_time_s, n_antennas, bandwidth_hz) * integration_time_s * 1000
+    rms_image = sensitivity_jy(frequency_hz, integration_time_s, n_antennas, bandwidth_hz) 
+    # but I can't use the RMS image, I need to use RMS of time series!!!!
+    # I need to propagate the error!!!
+    # and that is what happens when setting integration time to pulse width
+    return SNR * rms_image * integration_time_s * 1000
 
 
 def pixsize_deg(longest_baseline_m, freq_hz, oversampling_factor = 2):

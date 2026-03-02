@@ -55,7 +55,6 @@ def to_fits(data, output_filename):
 
 
 def average_channels(dyspec, avg_factor):
-    dyspec -= np.nanmedian(dyspec, axis=1)[:,np.newaxis]
     orig_freq_dim, orig_ts_dim = dyspec.shape
     if orig_freq_dim % avg_factor != 0:
         raise Exception("Averaging factor is not a multiple of the number of channels.")
@@ -82,6 +81,25 @@ def compute_time_series(dyspec):
     return average_channels(dyspec, dyspec.shape[0])[0, :]
 
 
+def study_time_series_noise(time_series : np.ndarray, time_res):
+    """
+    Compute the noise level on progressively longer prefixes of the time series.
+    The is a time series describing the noise level as a function of time series length.
+    """
+    # minimum length is 1 second, as is the incremental step size
+    min_length = 1 / time_res
+    step_size = 1 / time_res
+    n_points = time_series.size
+    n_steps = (n_points - min_length + step_size - 1) / step_size + 1
+    noise_levels = np.zeros((n_steps,))
+    mean_levels = np.zeros((n_steps,))
+    for i in range(n_steps):
+        i_e = min_length + i * step_size
+        sub_series = time_series[0, i_e]
+        mean_levels[i], noise_levels[i] = compute_iqr(sub_series)
+    plt.plot(noise_levels)
+    plt.show()
+
 
 def compute_iqr(values):
     sorted_values = sorted(values)
@@ -96,11 +114,11 @@ def compute_iqr(values):
 
 def peak_finding(values, snr_threshold = 5):
     peak_idxs = []
-    mean, stdev = compute_iqr(values)
+    mean, stdev = compute_iqr(values)  
     for i, val in enumerate(values):
         estimated_snr = (val - mean) / stdev
         if estimated_snr >= snr_threshold:
-            print(estimated_snr)
+            print(f"Peak no. {i+1}: est. SNR = {estimated_snr}, value = {val}, mean = {mean}, stdev = {stdev}")
             peak_idxs.append(i)
     return peak_idxs
 
@@ -138,7 +156,7 @@ def incoherent_dedisp(data, delay_table):
 
 
 
-def transform_spectrum(dyspec, frequencies, time_res, DM, channel_avg, time_avg):
+def transform_spectrum(dyspec, frequencies, time_res, DM, channel_avg, time_avg, disable_norm = False, gain = 1):
     dm_time = None
     dm_list = None
 
@@ -152,15 +170,27 @@ def transform_spectrum(dyspec, frequencies, time_res, DM, channel_avg, time_avg)
         for i, ds in enumerate(dyspec_list):
             dm_time[i, :] = np.mean(ds, axis=0)
 
+    dyspec *= gain
+
+    if not disable_norm:
+        dyspec -= np.nanmedian(dyspec, axis=1)[:,np.newaxis]
+    
     dyspec = average_channels(dyspec, channel_avg)
     if time_avg > 1:
         dyspec = average_timesteps(dyspec, time_avg)
 
     time_series = compute_time_series(dyspec)
-
-    peak_idxs = peak_finding(time_series)
-
+    print("mean", np.mean(time_series[179:189]))
+    print("sum", np.sum(time_series[179:189]))
+    
     median_series = np.median(dyspec, axis=0)
+    peak_idxs = peak_finding(time_series)
+    
+
+    if True:
+        time_series  -= np.nanmedian(time_series)
+        median_series  -= np.nanmedian(median_series)
+    
     return dyspec, dm_time, dm_list, time_series, median_series, peak_idxs
 
 
@@ -243,9 +273,9 @@ def plot_ts_and_dynspec(fig, ds, dm_time, dm_list, ts, median, peak_idxs, t, fre
 
 
 
-def plot_spectrum(fig, dyspec, time_offset, frequencies, time_res, dm, channel_avg, time_avg, plot_title, interp):
+def plot_spectrum(fig, dyspec, time_offset, frequencies, time_res, dm, channel_avg, time_avg, plot_title, interp, disable_norm, gain):
 
-    dyspec, dm_time, dm_list, time_series, median_series, peak_idxs = transform_spectrum(dyspec, frequencies, time_res, dm, channel_avg, time_avg)
+    dyspec, dm_time, dm_list, time_series, median_series, peak_idxs = transform_spectrum(dyspec, frequencies, time_res, dm, channel_avg, time_avg, disable_norm, gain)
     
     plot_ts_and_dynspec(fig, dyspec, dm_time, dm_list, time_series, median_series, peak_idxs,
                     [time_offset + x * time_res * time_avg for x in range(len(time_series))],
@@ -253,32 +283,31 @@ def plot_spectrum(fig, dyspec, time_offset, frequencies, time_res, dm, channel_a
     
 
 
-def process_followup_fits_list(filenames, frequencies, time_res, channel_avg, time_avg, args_dm, interp, save_plots, identities):
-
+def process_followup_fits_list(filenames, frequencies, time_res, channel_avg, time_avg, args_dm, interp, disable_norm, gain, save_plots, identities):
     fig = plt.figure(figsize=(10, 6))
     current_file_idx = 0
 
-    def process_fits(filename):
+    def process_fits(idx, filename):
         filename_info = extract_filename_info(filename)
         if len(filename_info) == 5: # old format
             x, y, dm, offset, cand_id = filename_info
-            plot_title = f"Candidate {cand_id} - DM {dm} - location ({x}, {y})"
+            plot_title = f"[{idx + 1} / {len(filenames)}] Candidate {cand_id} - DM {dm} - location ({x}, {y})"
         else:
             x, y, ra, dec, snr, dm, offset, cand_id = filename_info
             ident = "ID Unknown"
             if identities is not None:
                 ident = identities[filename]
-            plot_title = f"Candidate {cand_id} - SNR {snr} - DM {dm} - Location (RA = {ra}, DEC = {dec}) \n\n{ident}"
+            plot_title = f"[{idx + 1} / {len(filenames)}] Candidate {cand_id} - SNR {snr} - DM {dm} - Location (RA = {ra}, DEC = {dec}) \n\n{ident}"
 
         dyspec = read_fits(filename)
         if args_dm > 0:
             dm = args_dm
-        plot_spectrum(fig, dyspec, int(offset), frequencies, time_res, dm, channel_avg, time_avg, plot_title, interp)
+        plot_spectrum(fig, dyspec, int(offset), frequencies, time_res, dm, channel_avg, time_avg, plot_title, interp, disable_norm, gain)
     
     if save_plots:
-        for file in filenames:
+        for idx, file in enumerate(filenames):
             fig.clear()
-            process_fits(file)
+            process_fits(idx, file)
             plt.savefig(f"{file}_postprocessed.png", dpi=800)
         return
     
@@ -298,14 +327,14 @@ def process_followup_fits_list(filenames, frequencies, time_res, channel_avg, ti
             return
         
         fig.clear()
-        process_fits(filenames[current_file_idx])
+        process_fits(current_file_idx, filenames[current_file_idx])
         plt.draw()
 
     
     fig.canvas.mpl_connect('key_press_event', lambda event: on_keypress(event, fig))
 
     # Display the initial candidate
-    process_fits(filenames[0])
+    process_fits(0, filenames[0])
     plt.show()
 
 
@@ -355,6 +384,9 @@ if __name__ == "__main__":
     parser.add_argument("--dark", action='store_true', help="Enable dark background mode.")
     parser.add_argument("--id", action='store_true', help="Try to identify the candidate using the Pulsar Survey Scraper")
     parser.add_argument("--max-cands", type=int, default=-1, help="Maximum number of candidates a dynamic spectrum can contain not to be discarded in filtering. This helps with RFI.")
+    parser.add_argument("--gain", type=float, default=1, help="Apply calibration gain to the dynamic spectrum, before averaging.")
+    parser.add_argument("--disable-norm", action='store_true', help="Disable median subtraction used to normalise power across channels.")
+    parser.add_argument("--disable-time-norm", action='store_true', help="Disable time series normalisation.")
     parser.add_argument("FITS FILE", nargs='+', type=str, help="FITS file containing the dynamic spectrum.")
 
     args = vars(parser.parse_args())
@@ -387,12 +419,14 @@ if __name__ == "__main__":
             identities = None
             if args["id"]:
                 identities = identify_candidates(args["FITS FILE"])
-            process_followup_fits_list(args['FITS FILE'], frequencies, args["time_res"], args["chan_avg"], args["time_avg"], args["dm"], args["interp"], args["save"], identities)
+            process_followup_fits_list(args['FITS FILE'], frequencies, args["time_res"], args["chan_avg"],
+                                       args["time_avg"], args["dm"], args["interp"], args["disable_norm"],
+                                       args["gain"], args["save"], identities)
         except ValueError:
             # Not the standard followp filename.. use standard processing
             fig = plt.figure(figsize=(10, 6))
             dyspec = read_fits(args['FITS FILE'][0])
-            plot_spectrum(fig, dyspec, 0, frequencies, args["time_res"], args["dm"],  args["chan_avg"], args["time_avg"], args["FITS FILE"][0], args["interp"])
+            plot_spectrum(fig, dyspec, 0, frequencies, args["time_res"], args["dm"],  args["chan_avg"], args["time_avg"], args["FITS FILE"][0], args["interp"], args["disable_norm"], args["gain"])
             plt.show()
 
 

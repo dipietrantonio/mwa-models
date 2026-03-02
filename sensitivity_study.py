@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import matplotlib.pyplot as plt
 from basics import sensitivity_jy as sensitivity, frb_min_fluence_jyms as frb_min_fluence
 from argparse import ArgumentParser
@@ -33,12 +35,13 @@ if __name__ == "__main__":
     parser.add_argument("-b", "--bandwidth", type=float, default=30.72, help="Bandwidth (in MHz)")
     parser.add_argument("-a", "--antennas", type=int, default=128, help="Number of antennas")
     parser.add_argument("-t", "--inttime", default=0.01, type=float, help="Integration time (in seconds)")
-    parser.add_argument("-f", "--frequency", default=150.0, type=float, help="Central frequency (in MHz)")
+    parser.add_argument("-w", "--width", default=0.001, type=float, help="Burst width (in seconds)")
+    parser.add_argument("-f", "--frequency", default=154.25, type=float, help="Central frequency (in MHz)")
     parser.add_argument("--snr", type=float, default=10.0, help="Minimum Signal-to-Noise Ratio (SNR)")
 
     args = vars(parser.parse_args())
-    for t in [0.010, 0.020, 0.050]:
-        S = sensitivity(args['frequency'] * 1e6, t, args['antennas'], args['bandwidth'] * 1e6)
-        F = frb_min_fluence(args['snr'], args['frequency'] * 1e6, t, args['antennas'], args['bandwidth'] * 1e6)
-        print(f"Sensitivity is {S:.2f}, minimum detectable fluence is {F:.2f}")
-    sensitivity_study(args['frequency'] * 1e6, args['inttime'])
+    
+    S = sensitivity(args['frequency'] * 1e6, args["inttime"], args['antennas'], args['bandwidth'] * 1e6)
+    F = frb_min_fluence(args['snr'], args['frequency'] * 1e6, args["inttime"], args['antennas'], args['bandwidth'] * 1e6)
+    print(f"Sensitivity is {S:.2f}, minimum detectable fluence is {F:.2f}")
+    # sensitivity_study(args['frequency'] * 1e6, args['inttime'])
