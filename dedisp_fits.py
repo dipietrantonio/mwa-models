@@ -67,13 +67,26 @@ def average_channels(dyspec, avg_factor):
 
 
 
-def average_timesteps(dyspec, avg_factor):
+def average_timesteps(dyspec, avg_factor, offset = 0):
     orig_freq_dim, orig_ts_dim = dyspec.shape
     new_ts_dim = int(ceil(orig_ts_dim / avg_factor))
     new_dyspec = np.ndarray((orig_freq_dim, new_ts_dim))
-    for i in range(new_ts_dim):
-        new_dyspec[:, i] = np.mean(dyspec[:, i*avg_factor:i*avg_factor + avg_factor], axis=1)
-    
+    # The offset is used to align the averaging operation with the start of a pulse,
+    # so that the signal does not get diluted with noise. Ideally,
+    # offset is the start of the pulse, averaging factor is the pulse width,
+    # this will get maximum SNR.
+    # Initial alignment is the initial number of bins to average and so that the subsequent
+    # `avg_factor` bin groups can align with the pulse. If 0, bin groups are already aligned
+    # with the pulse.
+    initial_alignment = int(offset % avg_factor)
+    if initial_alignment == 0:
+        for i in range(new_ts_dim):
+            new_dyspec[:, i] = np.mean(dyspec[:, i*avg_factor:i*avg_factor + avg_factor], axis=1)
+    else:
+        new_dyspec[:, 0] = np.mean(dyspec[:, 0:initial_alignment], axis=1)
+        for i in range(1, new_ts_dim):
+            start_pos = initial_alignment + (i - 1) * avg_factor
+            new_dyspec[:, i] = np.mean(dyspec[:, start_pos:start_pos + avg_factor], axis=1)
     return new_dyspec
 
 
@@ -191,7 +204,7 @@ def incoherent_dedisp(data, delay_table):
 
 
 
-def transform_spectrum(dyspec, frequencies, time_res, DM, channel_avg, time_avg, disable_norm = False, gain = 1):
+def transform_spectrum(dyspec, frequencies, time_res, DM, channel_avg, time_avg, time_avg_offset, disable_norm = False, gain = 1):
     dm_time = None
     dm_list = None
 
@@ -212,7 +225,7 @@ def transform_spectrum(dyspec, frequencies, time_res, DM, channel_avg, time_avg,
     
     dyspec = average_channels(dyspec, channel_avg)
     if time_avg > 1:
-        dyspec = average_timesteps(dyspec, time_avg)
+        dyspec = average_timesteps(dyspec, time_avg, ceil(time_avg_offset / time_res))
 
     time_series = compute_time_series(dyspec)
     median_series = np.median(dyspec, axis=0)
@@ -301,9 +314,9 @@ def plot_ts_and_dynspec(fig, ds, dm_time, dm_list, ts, median, peak_idxs, t, fre
 
 
 def plot_spectrum(main_fig, mean_fig, median_fig, dyspec, time_offset, frequencies, time_res, dm, channel_avg,
-                  time_avg, plot_title, interp, disable_norm, gain, fit_mean, fit_median):
+                  time_avg,  time_avg_offset, plot_title, interp, disable_norm, gain, fit_mean, fit_median):
 
-    dyspec, dm_time, dm_list, time_series, median_series, peak_idxs = transform_spectrum(dyspec, frequencies, time_res, dm, channel_avg, time_avg, disable_norm, gain,)
+    dyspec, dm_time, dm_list, time_series, median_series, peak_idxs = transform_spectrum(dyspec, frequencies, time_res, dm, channel_avg, time_avg, time_avg_offset - time_offset, disable_norm, gain,)
     
     time_range = [time_offset + x * time_res * time_avg for x in range(len(time_series))]
     freq_range = [x*1e3 for x in frequencies[:-1]]
@@ -341,7 +354,7 @@ def plot_spectrum(main_fig, mean_fig, median_fig, dyspec, time_offset, frequenci
         fit_gaussian_to_timeseries(median_fig, median_series[low:high], "Median Flux Density")
 
 
-def process_followup_fits_list(filenames, frequencies, time_res, channel_avg, time_avg, args_dm, interp, disable_norm, gain,
+def process_followup_fits_list(filenames, frequencies, time_res, channel_avg, time_avg, time_avg_offset, args_dm, interp, disable_norm, gain,
                                save_plots, identities, fit_mean, fit_median):
     
     main_fig = plt.figure(figsize=(10, 6))
@@ -370,7 +383,7 @@ def process_followup_fits_list(filenames, frequencies, time_res, channel_avg, ti
         if args_dm > 0:
             dm = args_dm
         plot_spectrum(main_fig, mean_fig, median_fig, dyspec, int(offset), frequencies, time_res, dm, channel_avg,
-                      time_avg, plot_title, interp, disable_norm, gain, fit_mean, fit_median)
+                      time_avg, time_avg_offset, plot_title, interp, disable_norm, gain, fit_mean, fit_median)
     
     if save_plots:
         for idx, file in enumerate(filenames):
@@ -446,6 +459,7 @@ if __name__ == "__main__":
     parser.add_argument("--dm", type=float, default=0, help="Dispersion measure used to dedisperse the dynamic spectrum.")
     parser.add_argument("--chan-avg", type=int, default=4, help="Channel averaging factor.")
     parser.add_argument("--time-avg", default=1, type=int, help="Number of contiguous time bins to average.")
+    parser.add_argument("--time-avg-offset", default=0.0, type=float, help="Offset in seconds to the position where to align the time averaging operation.")
     parser.add_argument("--freq", type=float, default=154.237, help="Central frequency (in MHz) of the central frequency channel.")
     parser.add_argument("--nchans", type=int, default=768, help="Number of frequency channels.")
     parser.add_argument("--chan-width", type=float, default=0.04, help="Frequency channel width in MHz")
@@ -485,7 +499,7 @@ if __name__ == "__main__":
                 exit(1)
             dyspec = read_fits(file)
             dyspec, dm_time, dm_list, time_series, median_series, peak_idxs = transform_spectrum(
-                dyspec, frequencies, args["time_res"], dm, args["chan_avg"], args["time_avg"])
+                dyspec, frequencies, args["time_res"], dm, args["chan_avg"], args["time_avg"], args["time_avg_offset"])
             if len(peak_idxs) > 0 and (args["max_cands"] < 0 or len(peak_idxs) <= args["max_cands"]):
                 shutil.copy2(file, f"filtered/{file}")
 
@@ -496,7 +510,7 @@ if __name__ == "__main__":
             if args["id"]:
                 identities = identify_candidates(args["FITS FILE"])
             process_followup_fits_list(args['FITS FILE'], frequencies, args["time_res"], args["chan_avg"],
-                                       args["time_avg"], args["dm"], args["interp"], args["disable_norm"],
+                                       args["time_avg"],  args["time_avg_offset"], args["dm"], args["interp"], args["disable_norm"],
                                        args["gain"], args["save"], identities, args["fit_mean"], args["fit_median"])
         except ValueError:
             # Not the standard followp filename.. use standard processing
@@ -510,7 +524,7 @@ if __name__ == "__main__":
         
             dyspec = read_fits(args['FITS FILE'][0])
             plot_spectrum(main_fig, mean_fig, median_fig, dyspec, 0, frequencies, args["time_res"], args["dm"],  args["chan_avg"],
-                          args["time_avg"], args["FITS FILE"][0], args["interp"], args["disable_norm"],
+                          args["time_avg"],  args["time_avg_offset"], args["FITS FILE"][0], args["interp"], args["disable_norm"],
                           args["gain"], args["fit_mean"], args["fit_median"])
             plt.show()
 
