@@ -135,7 +135,7 @@ if __name__ == "__main__":
     parser.add_argument("--tbins-per-file", type=int, default=50, help="Number of time bins in each FITS cube.") # TODO could be read from the file
     parser.add_argument("--chan-width", type=float, default=0.04, help="Frequency channel width in MHz")
     parser.add_argument("--time-res", type=float, default=0.02, help="Time resolution in seconds.")
-    parser.add_argument("FITS FILES", nargs='+', type=str, help="FITS file containing the dynamic spectrum.")
+    parser.add_argument("FITS FILES", nargs='+', type=str, help="FITS files containing image cubes.")
     parser.add_argument("--time-range", type=str, default=None, help="Time range to dedisperse. Default: all of it.")
     parser.add_argument("--output-dir", type=str, required=True, help="Output directory where to save output files.")
     parser.add_argument("--dedisp", action='store_true', help="Dedisperse images.")
@@ -162,5 +162,5 @@ if __name__ == "__main__":
         incoherent_dedisp(input_dir, all_seconds, channel_set, n_channels, n_timebins, args["imgsize"], delays, args["time_range"], args["gain"], output_dir)
 
     elif args["diff"]:
-        image_differencing(args["FITS FILES"], 256, output_dir)
+        image_differencing(args["FITS FILES"], args["imgsize"], output_dir)
 
