@@ -47,10 +47,8 @@ def sensitivity_jy(frequency_hz, integration_time_s, n_antennas, bandwidth_hz):
 
 
 def frb_min_fluence_jyms(SNR, frequency_hz, integration_time_s, n_antennas, bandwidth_hz):
-    rms_image = sensitivity_jy(frequency_hz, integration_time_s, n_antennas, bandwidth_hz) 
-    # but I can't use the RMS image, I need to use RMS of time series!!!!
-    # I need to propagate the error!!!
-    # and that is what happens when setting integration time to pulse width
+    rms_image = sensitivity_jy(frequency_hz, integration_time_s, n_antennas, bandwidth_hz)
+    print(rms_image * 20)
     return SNR * rms_image * integration_time_s * 1000
 
 

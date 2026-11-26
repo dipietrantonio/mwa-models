@@ -79,6 +79,7 @@ def pie_chart_hour_project(obs):
     
     labels = []
     values = []
+    print("total = ", total / 3600)
     for p, v in project_to_hours.items():
         labels.append(p)
         values.append(v)
@@ -110,13 +111,21 @@ def print_all_smart(obs):
 
 if __name__ == "__main__":
     # do not get cal observations
-    obs = [x for x in parse_asvo_results_xml("data/all_vcs.xml") if not x["calibration"] and not x["deleted_flag"]]
-    print_all_smart(obs)
-    exit(0)
-    for x in obs:
-        if x['center_frequency_mhz'] < 120: print(x['obs_id'])
+    obs = [x for x in parse_asvo_results_xml("data/all_vcs.xml") \
+           if not x["calibration"] and not x["deleted_flag"] and x["channels_are_contiguous"]]
+    all_confs = set(x["mwa_array_configuration"] for x in obs)
+    obs = [x for x in obs if x["mwa_array_configuration"] == 'Phase II Compact' and not x['projectid'] == 'G0057']
+
+    for o in obs:
+        print(o["obs_id"])
+    
+    # print(all_confs)
+    # print_all_smart(obs)
+    # exit(0)
+    # for x in obs:
+    #     if x['center_frequency_mhz'] < 120: print(x['obs_id'])
 
     # print_general_stats(obs)
-    # pie_chart_hour_project(obs)
-    histogram_category(obs, "mode")
+    #pie_chart_hour_project(obs)
+    #histogram_category(obs, "mode")
     histogram_category(obs, "center_frequency_mhz")
