@@ -130,22 +130,16 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser()
     parser.add_argument("--dm", type=float, default=0, help="Dispersion measure used to dedisperse the dynamic spectrum.")
-    parser.add_argument("--chan-avg", type=int, default=4, help="Channel averaging factor.")
-    parser.add_argument("--time-avg", default=1, type=int, help="Number of contiguous time bins to average.")
     parser.add_argument("--freq", type=float, default=154.237, help="Central frequency (in MHz) of the central frequency channel.")
-    parser.add_argument("--nchans", type=int, default=768, help="Number of frequency channels.")
+    parser.add_argument("--nchans-per-file", type=int, default=32, help="Number of frequency channels in each FITS cube.") # TODO could be read from the file
+    parser.add_argument("--tbins-per-file", type=int, default=50, help="Number of time bins in each FITS cube.") # TODO could be read from the file
     parser.add_argument("--chan-width", type=float, default=0.04, help="Frequency channel width in MHz")
     parser.add_argument("--time-res", type=float, default=0.02, help="Time resolution in seconds.")
-    parser.add_argument("--output", type=str, default="out.fits", help="Output FITS filename.")
-    parser.add_argument("--interp", action='store_true', help="Enable interpolation when plotting the dynamic spectrum.")
-    parser.add_argument("--fpeaks", action='store_true', help="Only save dynamic spectra with actual peaks (SNR >= 4) in them.")
-    parser.add_argument("--save", action='store_true', help="Save plots instead of displaying them.")
-    parser.add_argument("--dark", action='store_true', help="Enable dark background mode.")
-    parser.add_argument("--id", action='store_true', help="Try to identify the candidate using the Pulsar Survey Scraper")
     parser.add_argument("FITS FILES", nargs='+', type=str, help="FITS file containing the dynamic spectrum.")
     parser.add_argument("--time-range", type=str, default=None, help="Time range to dedisperse. Default: all of it.")
     parser.add_argument("--output-dir", type=str, required=True, help="Output directory where to save output files.")
     parser.add_argument("--dedisp", action='store_true', help="Dedisperse images.")
+    parser.add_argument("--imgsize", type=int, default=256, help="Image side size.") # TODO could be read from files.
     parser.add_argument("--diff", action='store_true', help='Run difference imaging.')
     parser.add_argument("--gain", type=float, default=1, help="Calibration factor.")
 
@@ -160,10 +154,12 @@ if __name__ == "__main__":
     except:
         pass
     input_dir = pathlib.Path(args["FITS FILES"][0]).parents[0]
+    n_channels = args["nchans_per_file"]
+    n_timebins = args["ntbins_per_file"]
 
     if args["dedisp"]:
-        all_seconds, channel_set = retrieve_fits_info(args["FITS FILES"], 32, 50)
-        incoherent_dedisp(input_dir, all_seconds, channel_set, 32, 50, 256, delays, args["time_range"], args["gain"], output_dir)
+        all_seconds, channel_set = retrieve_fits_info(args["FITS FILES"], n_channels, n_timebins)
+        incoherent_dedisp(input_dir, all_seconds, channel_set, n_channels, n_timebins, args["imgsize"], delays, args["time_range"], args["gain"], output_dir)
 
     elif args["diff"]:
         image_differencing(args["FITS FILES"], 256, output_dir)
